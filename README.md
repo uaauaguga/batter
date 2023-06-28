@@ -1,6 +1,6 @@
-# term-tagger
+# batter
 
-term-tagger is a tool for bacteria transcription terminator prediction based on BERT-CRF model.  
+batter is a tool for bacteria transcription terminator prediction based on BERT-CRF model. It aims to predict both rho dependent and rho independent terminator across brode phylogeny. 
 
 ## dependency
 - required (for terminator prediction/model inference): 
@@ -15,7 +15,7 @@ term-tagger is a tool for bacteria transcription terminator prediction based on 
 
 ## usage
 
-- `term-tagger` takes bacteria genome sequence (can be contig or complete/draft genome) as input, and produces predicted terminator coordinate and strand information with confidence scores in bed format
+- `batter` takes bacteria genome sequence (can be contig or complete/draft genome) as input, and produces predicted terminator coordinate and strand information with confidence scores in bed format
 
 
 
