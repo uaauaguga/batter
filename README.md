@@ -30,21 +30,26 @@ git clone https://github.com/uaauaguga/batter.git
 
 ## Inference
 
+- Here we take scanning S.aureus genome [GCF_000013425.1](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/013/425/GCF_000013425.1_ASM1342v1/) as an example. 
+
+- batter scan top strand by default, for genome scanning, search both top strand and bottom strand is desired, here we use `--reverse-complement`/`-rc` option. The following command takes around 2 min to finish on a nvidia V100 GPU.
+
 ```bash
-#batter scan top strand by default
-scripts/batter --fasta examples/example.fa  --output examples/example.bed --device cuda:0
+# the default batch size if 256. If the GPU memory is limitted, plase use a smaller batch size, eg. 64
+scripts/batter --fasta examples/S.aureus/genome.fna --output examples/S.aureus.bed --device cuda:0 -rc
+```
 
-# if you want to scan both up strand and bottom strand, use --reverse-complement/-rc option
-scripts/batter --fasta examples/example.fa  --output examples/example.bed --device cuda:0 -rc
+- if you want to keep temperorary file, use `--keep-temp`/`-kt` option. You can also specify path of temporary file with parameter `--tmp-file`
+ 
+```bash
+ scripts/batter --fasta examples/S.aureus/genome.fna --output examples/S.aureus.bed --device cuda:0 -rc -kt
+```
 
-# if you want to keep temperorary file, use --keep-temp/-kt option
-# you can also specify path of temporary file with parameter "--tmp-file"
-scripts/batter --fasta examples/example.fa  --output examples/example.bed --device cuda:0 -rc -kt
+- if more efficient scanning (at cost of lower sensitivity) is desired, you can increase the step size (100 nt by default) for scanning 
 
-
-# if more efficient scanning (at cost of lower sensitivity) is desired, you can increase the step size (100 nt by default) for scanning 
-scripts/batter --fasta examples/example.fa  --output examples/example.250.rc.bed --device cuda:0 --stride 250 -rc
-
+```bash
+ # the following command take ~1 min on a V100 GPU
+ scripts/batter --fasta examples/S.aureus/genome.fna --output examples/S.aureus.250.bed --device cuda:0 -rc --stride 250
 ```
 
 ## Model calibration
@@ -53,6 +58,14 @@ scripts/batter --fasta examples/example.fa  --output examples/example.250.rc.bed
 
 - A cutoff of 0.5 is generally safe.
 - The mean cutoffs of species with different genomic GC content that achieve a false positive rate (FPR) of 0.1/KB are listed as follow:
+
+```bash
+# you may check GC content with the following command. many other tools does same thing
+scripts/kmer-frequency-fitter.py -i examples/S.aureus/genome.fna -o examples/S.aureus/genome.nuc.freq -k 1
+# kmer	A	C	G	T
+# genome	33.27063	16.51051	16.35686	33.85906
+```
+
 
 | GC content | cutoff |
 | ---------- | ------ |  
@@ -66,15 +79,36 @@ scripts/batter --fasta examples/example.fa  --output examples/example.250.rc.bed
 - Provide your genome, calculate tetra-mer frequency (TNF), and predict cutoff at FPR of 0.1 with a pretrained model (this feature depends on lightgbm package) 
 
 ```bash
-scripts/tnf-score-cutoff-predictor.py -tnf examples/example.TNF --scores examples/example.cutoff.01
+# calculate TNF distribution 
+scripts/kmer-frequency-fitter.py -i examples/S.aureus/genome.fna -o examples/S.aureus/genome.TNF
+# predict 
+scripts/tnf-score-cutoff-predictor.py -tnf examples/S.aureus/genome.TNF --scores examples/S.aureus/genome.cutoff 
+# cat examples/S.aureus/genome.cutoff
+# genome id	score
+# genome	0.5252
 ```
 
 - Of course you can simulate a background sequence set, and determine the cutoff yourself.
 
+- Than we can filter the predicted terminators with cutoff specified by one of the above approaches
+
+```bash
+cat examples/S.aureus.bed | awk '$5>0.5252{print}' > examples/S.aureus.filtered.bed
+```
 
 ## Annotation
 
 - Computational annotation of prokaryote genome, especially annotation of proteining coding genes, is relatively reliable, and you can annotate predicted terminators with its relative position to protein coding gene
 - You can download bacteria genome annotation from ncbi, or perform annotation using tools like [prokka](https://github.com/tseemann/prokka). You'll get a file in gff format.
-- 
 
+- Convert CDS annotation to bed format
+
+```bash
+scripts/gff2bed.py --gff examples/S.aureus/annotation.gff --bed examples/S.aureus/annotation.bed --feature CDS --name ID
+``` 
+
+- Annotate predicted terminators with protein coding genes
+
+```bash
+scripts/annotate-intervals.py --gene examples/S.aureus/annotation.bed --bed examples/S.aureus.250.filtered.bed --contig examples/S.aureus/genome.fna.fai --output examples/S.aureus.250.filtered.annotated.bed
+```

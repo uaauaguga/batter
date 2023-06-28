@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse
-from tqdm import tqdm
 import sys 
 
 
@@ -36,7 +35,7 @@ def main():
     args = parser.parse_args()
     fin = open(args.gff)
     fout = open(args.bed,"w")
-    for line in tqdm(fin):
+    for line in fin:
         if line.startswith("#"):
             continue
         fields = line.strip().split("\t")
@@ -56,3 +55,7 @@ def main():
         chrom, start, end, strand = fields[0], int(fields[3]) - 1, int(fields[4]), fields[6]
         print(f"{chrom}\t{start}\t{end}\t{name}\t{value}\t{strand}",file=fout) 
     fout.close()
+
+
+if __name__ == "__main__":
+    main()
