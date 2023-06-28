@@ -101,7 +101,7 @@ def main():
     parser.add_argument('--tmp-file','-tf',type=str,help="where to save temperatory file")
     parser.add_argument('--keep-tmp','-kt',action="store_true",help="whether keep temporatory file")
     parser.add_argument('--top-k','-k',type=int,default = 10,help="number of state path to return")
-    parser.add_argument('--temperature',type=float,default = 1.0,help="temperature for probability calculation")
+    #parser.add_argument('--temperature',type=float,default = 1.0,help="temperature for probability calculation")
     parser.add_argument('--verbose','-v',action="store_true", help="whether use verbose output")
     args = parser.parse_args()
 
@@ -155,13 +155,13 @@ def main():
                 logger.info(f"{int(nbase/1000)} K bases processed .")
             # make a inference when instances accumulate to specified batch size
             if len(batched_tokens) == args.batch_size:
-                inference(tagger, batched_tokens, batched_ivs, args.top_k, args.device, args.temperature)
+                inference(tagger, batched_tokens, batched_ivs, args.top_k, args.device) #, args.temperature)
                 batched_tokens = [] # clean the batch list
                 batched_ivs = []
         clear_cached_predictions(fout)
     # make a inference for the last batch
     if len(batched_tokens) > 0:
-        inference(tagger, batched_tokens, batched_ivs, args.top_k, args.device, args.temperature)
+        inference(tagger, batched_tokens, batched_ivs, args.top_k, args.device) #, args.temperature)
         clear_cached_predictions(fout)
     fout.close()
 
