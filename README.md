@@ -28,11 +28,22 @@ git clone https://github.com/uaauaguga/batter.git
 
 - `batter` takes bacteria genome sequence (can be contig or complete/draft genome) as input, and produces predicted terminator coordinate and strand information with confidence scores in bed format
 
+
 ```bash
 #batter scan top strand by default
 scripts/batter --fasta examples/example.fa  --output examples/example.bed --device cuda:0
 
-# if you want to scan both up strand and bottom strand, use -r option
+# if you want to scan both up strand and bottom strand, use --reverse-complement/-rc option
 scripts/batter --fasta examples/example.fa  --output examples/example.bed --device cuda:0 -rc
+
+# if you want to keep temperorary file, use --keep-temp/-kt option
+# you can also specify path of temporary file with parameter "--tmp-file"
+scripts/batter --fasta examples/example.fa  --output examples/example.bed --device cuda:0 -rc -kt
+
+
+# if more efficient scanning (at cost of lower sensitivity) is desired, you can increase the step size (100 nt by default) for scanning 
+scripts/batter --fasta examples/example.fa  --output examples/example.200.bed --device cuda:0 --stride 200 
+
 ```
+
 

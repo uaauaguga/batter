@@ -165,6 +165,9 @@ def main():
         clear_cached_predictions(fout)
     fout.close()
 
+    
+    logger.info("Sort predictions ...")
+    subprocess.run(["sort", "-k1,1", "-k2,2n", "-o", tmp_path, tmp_path])
 
     logger.info("Merge predictions ...")
     logger.info(f"Final results will be saved to {args.output} .")

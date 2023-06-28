@@ -69,7 +69,6 @@ def main():
             mseq_id, mstart, mend = iv_by_strand[mstrand]
             mscore = score_by_strand[strand]
             print(mseq_id, mstart, mend, ".", round(mscore,3), mstrand, file=fout, sep="\t")
-
     fin.close()
     fout.close()
 
