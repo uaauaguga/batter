@@ -28,7 +28,7 @@ git clone https://github.com/uaauaguga/batter.git
 
 - `batter` takes bacteria genome sequence (can be contig or complete/draft genome) as input, and produces predicted terminator coordinate and strand information with confidence scores in bed format
 
-## Inference
+### Inference
 
 - Here we take scanning S.aureus genome [GCF_000013425.1](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/013/425/GCF_000013425.1_ASM1342v1/) as an example. 
 
@@ -52,7 +52,7 @@ scripts/batter --fasta examples/S.aureus/genome.fna --output examples/S.aureus.b
  scripts/batter --fasta examples/S.aureus/genome.fna --output examples/S.aureus.250.bed --device cuda:0 -rc --stride 250
 ```
 
-## Model calibration
+### Model calibration
 
  The output of batter are genomic intervals associated with a score. The predictions are quite conservative, but for low GC-content bacteria species, the false positive rate tend to be relatively higher. There are several choices to determine which cutoff to use. 
 
@@ -96,7 +96,7 @@ scripts/tnf-score-cutoff-predictor.py -tnf examples/S.aureus/genome.TNF --scores
 cat examples/S.aureus.bed | awk '$5>0.5252{print}' > examples/S.aureus.filtered.bed
 ```
 
-## Annotation
+### Annotation
 
 - Computational annotation of prokaryote genome, especially annotation of proteining coding genes, is relatively reliable, and you can annotate predicted terminators with its relative position to protein coding gene
 - You can download bacteria genome annotation from ncbi, or perform annotation using tools like [prokka](https://github.com/tseemann/prokka). You'll get a file in gff format.
