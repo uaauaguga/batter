@@ -14,7 +14,8 @@ def main():
     parser.add_argument('--bed','-b',type=str, required=True, help="intervals in bed format")
     parser.add_argument('--output','-o',type=str, required=True, help="where to save the annotations")
     parser.add_argument('--contig', '-c', type=str, required=True, help="contig length")
-    parser.add_argument('--flank', '-f', type=int, default = 32, help="this length flanking CDS are considered as downsream/leader")
+    parser.add_argument('--offset', '-os', type=int, default = 32, help="distance inside CDS that are assigned as 5'/3'")
+    parser.add_argument('--flank', '-fk', type=int, default = 128, help="distance outside that are assigned as leader/downstream")
     args = parser.parse_args()
 
     logger.info("Load intervals ...")
@@ -78,19 +79,35 @@ def main():
         seq_id, start, end = fields[:3]
         distance = int(fields[-1])
         up_distance[(seq_id, start, end)] = distance
+        # for features that overlap with cds, we only need to consider it ones
         if distance == 0:
             # NC_004719.1	61486	61508	NC_004719.1	61467	62430	WP_011109717.1	.	+	0
             tstart, tend = int(start), int(end) 
             gstart, gend = int(fields[4]), int(fields[5])
-            gue = gstart + 32 #int((gend - gstart)/10)
-            gds = gend - 32 # int((gend - gstart)/10)
-            if tend < gue and gue < (gstart + int((gend - gstart)/5)):
-                genic_location[(seq_id, start, end)] = "5'" if fields[-2] == "+" else "3'"
-            elif tstart > gds and gds > (gend - int((gend - gstart)/5)):
-                genic_location[(seq_id, start, end)] = "3'" if fields[-2] == "+" else "5'"
+            if fields[-2] == "+":
+                gue = gstart + args.offset
+                gds = gend - args.offset
+                if gue >= gds:
+                    genic_location[(seq_id, start, end)] = "inside"
+                else:
+                    if tend < gue:
+                        genic_location[(seq_id, start, end)] = "5'"
+                    elif tstart > gds:
+                        genic_location[(seq_id, start, end)] = "3'"
+                    else:
+                        genic_location[(seq_id, start, end)] = "inside"
             else:
-                genic_location[(seq_id, start, end)] = "inside"
-        # OTU-25813:NZ_FUKM01000014.1	74	137	.	-1	-1	.	-1	.	-1
+                gue = gend - args.offset
+                gds = gstart + args.offset
+                if gue <= gds:
+                    genic_location[(seq_id, start, end)] = "inside"
+                else:
+                    if tstart > gue:
+                        genic_location[(seq_id, start, end)] = "5'"
+                    elif tend < gds:
+                        genic_location[(seq_id, start, end)] = "3'"
+                    else:
+                        genic_location[(seq_id, start, end)] = "inside"
         up_strandness[(seq_id, start, end)] = fields[-2]
         up_gene_ids[(seq_id, start, end)] = fields[-4]
     
@@ -106,6 +123,7 @@ def main():
             continue
         fields = line.strip().split("\t")
         seq_id, start, end = fields[:3]
+        # genic cases is already handled
         down_distance[(seq_id, start, end)] = int(fields[-1])
         down_strandness[(seq_id, start, end)] = fields[-2]
         down_gene_ids[(seq_id, start, end)] = fields[-4]
@@ -118,8 +136,6 @@ def main():
     annotation_lut = {"++":">|>", "+-":">|<","+.":">|.",
                       "-+":"<|>", "--":"<|<","-.":"<|.",
                       ".+":".|>", ".-":".|<","..":".|."}
-    flanking = args.flank
-
     fout = open(args.output,"w")
     for seq_id, start, end in strandness:
         if (seq_id, start, end) not in up_distance or (seq_id, start, end) not in down_distance:
@@ -142,7 +158,6 @@ def main():
             gene_id = f"{up_gene_ids[(seq_id, start, end)]}|{down_gene_ids[(seq_id, start, end)]}"
             distance = f"{ud},{dd}"
         s = strandness[(seq_id, start, end)]
-        assignment = "none"
         if annotation == "genic":
             assert us == ds
             assignment = "gene"
@@ -152,7 +167,8 @@ def main():
                 conflict = "concordant"
             assignment += ":" + genic_location[(seq_id, start, end)]
         else:
-            if min(ud, dd) >= flanking:
+            if min(ud, dd) >= args.flank:
+                # handle orphan cases
                 assignment = "orphan" if (max(ud, dd) < 100000) else "unassigned"
                 # annotate strandness to the nearest one
                 if ((ud <= dd) and (s == us)) or ((ud >= dd) and (s == ds)):
@@ -162,7 +178,8 @@ def main():
             else: 
                 if annotation == ">|<":
                     assignment = "downstream"
-                    if ((s == "+" and ud < flanking) or (s == "-" and dd < flanking)):
+                    # first consider concordant case
+                    if ((s == "+") and (ud < args.flank)) or ((s == "-") and (dd < args.flank)):
                         conflict = "concordant"
                     else:
                         conflict = "discordant"
@@ -172,22 +189,21 @@ def main():
                     else:
                         assignment = "leader"
                     conflict = "concordant" if s == "+" else "discordant"                 
-                    # else already setted to orphan
+                    # orphan cases are already handled
                 elif annotation in ["<|<",".|<","<|."]:
                     if dd <= ud:
                         assignment = "downstream"
                     else:
                         assignment = "leader"
                     conflict = "concordant" if s == "-" else "discordant"
-                    # else already setted to orphan
+                    # orphan cases are ready handled
                 elif annotation == "<|>":
-                    # either leader or orphan
-                    if min(ud, dd) < flanking:
-                        assignment = "leader"
-                        if (s == "+" and dd < flanking) or (s == "-" and ud < flanking):
-                            conflict = "concordant"
-                        else:
-                            conflict = "discordant"
+                    # either leader or orphan, orphan cases are already handled
+                    assignment = "leader"
+                    if ((s == "+") and (dd < args.flank)) or ((s == "-") and (ud < args.flank)):
+                        conflict = "concordant"
+                    else:
+                        conflict = "discordant"                
                 else:
                     assignment = "unassigned"
                     conflict = "unknown"
@@ -205,4 +221,7 @@ def main():
 if __name__ == "__main__":
     main() 
         
+    
 
+    
+     
