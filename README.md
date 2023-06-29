@@ -1,6 +1,6 @@
 # batter
 
-- batter is a tool for bacteria transcription terminator prediction based on BERT-CRF model. 
+- batter (**b****a**cteria **t**ranscript **t**hree prime **e**nd **r**ecognizer) is a tool for bacteria transcription terminator prediction based on BERT-CRF model. 
 - It aims to predict both rho dependent and rho independent terminator across diverse species in Bacteria domain.
 
 ## Installation
